@@ -35,6 +35,7 @@ weaponList.append({'name': 'Bite', 'strength': 10, 'accuracy': 80})
 # zombie weapon
 zWeapon = [weapon for weapon in weaponList if weapon['name']=='Bite'][0]
 
+# Main call that calls most of the other actions
 def getAction():
     found = False
     action = raw_input("\n> ").lower().split()
@@ -50,31 +51,35 @@ def startGame():
     readTitle()
 
     global zombiesBool
+    # Check for zombies cheat code
     if raw_input('\nPress ENTER> ').lower() == 'no zombies':
-        zombiesBool = False
+        zombiesBool = False # Zombie attacks dissabled
         print '\nAll zombies have starved to re-death!'
         sleep(1)
     else:
-        zombiesBool = True
+        zombiesBool = True # Zombie attacks enabled
+
+    print "\nMain menu"
+    print "---------\n"
+    print "(N)ew game"
+    print "(L)oad game"
+    print "(Q)uit"
+
     while (True):
-        print "\nMain menu"
-        print "---------\n"
-        print "(N)ew game"
-        print "(L)oad game"
-        print "(Q)uit"
-        choice = raw_input("\n> ")
-        if (choice.lower() == "n"):
+        choice = raw_input("\n> ").lower()
+        if (choice == "n"):
             initialize()
             break
-        if (choice.lower() == "l"):
+        if (choice == "l"):
             loadGame()
             break
-        if (choice.lower() == "q"):
-            print "Have a nice day."
+        if (choice == "q"):
+            print "The Walkers found you and are eating you alive."
             exit(0)
-        return
+    return
 
 def initialize():
+    # Declair and initialize all the global variables
     global health, inventory, pWeapons, currentRoom, previousRoom, pickUpList
     health = 100
     inventory = dict()
@@ -83,31 +88,20 @@ def initialize():
     pWeapons.append([weapon for weapon in weaponList if weapon['name']=="Knife"][0])
     pWeapons.append([weapon for weapon in weaponList if weapon['name']=="Nothing"][0])
     pWeapons.append([weapon for weapon in weaponList if weapon['name']=="Flea"][0])
+    pickUpList = list()
     previousRoom = "none"
     currentRoom = os.path.realpath(__file__).split('/') # Get current file location
     currentRoom.pop() # gets directory
     currentRoom.append('Rooms') # Navigate into the Rooms subcurrentRoom
     currentRoom.append('IntroStory') # Navigate to first room
-    pickUpList = list()
-    printDescription()
-    return
 
-def quitGame():
-    print '\nWould you like to save your game?'
-    answer = raw_input("\n> ").lower()
-    if 'y' in answer:
-        saveGame()
-        print 'See you soon'
-        exit(0)
-    elif 'n' in answer:
-        print 'You committed suicide'
-        exit(0)
-    else:
-        stderr.write('Invalid input\n')
+    printDescription()
     return
 
 def saveGame():
     global health, inventory, pWeapons, currentRoom, previousRoom, pickUpList
+
+    # Specify the save game file
     print "Please enter a file name for your savegame."
     while (True):
         saveDir = (raw_input("\n> ")).strip('.sg') + '.sg'
@@ -119,6 +113,8 @@ def saveGame():
                 print "Choose another name."
         else:
             break
+
+    # Dump all variables to the save file
     with open(saveDir, 'w') as outFile:
         pickle.dump(health, outFile)
         pickle.dump(inventory, outFile)
@@ -131,9 +127,11 @@ def saveGame():
 
 def loadGame():
     global health, inventory, pWeapons, currentRoom, previousRoom, pickUpList
-    fileList = glob('*.sg')
+    fileList = glob('*.sg') # Generate a list of files with the .sg suffix
     fileList.sort()
+
     if (len(fileList) > 0):
+        # Print list of saved games
         print "\nList of avaiable savegames:"
         print "---------------------------"
         i=1
@@ -142,8 +140,8 @@ def loadGame():
             i += 1
         success = False
         while (success == False):
+            # Prompt for a saved game to load
             print "\nPlease choose a savegame."
-
             invalidInt = True
             while(invalidInt):
                 try:
@@ -152,63 +150,90 @@ def loadGame():
                     savegame = fileList[saveNumber-1]
                 except ValueError:
                     invalidInt = True
-                    print "\nInput needs to be integer."
+                    print "\nPlease use the game number"
+                    stderr.write("Input needs to be integer.\n")
 
-            if (exists(savegame)):
-                with open(savegame) as inFile:
-                    health = pickle.load(inFile)
-                    inventory = pickle.load(inFile)
-                    currentRoom = pickle.load(inFile)
-                    previousRoom = pickle.load(inFile)
-                    pWeapons = pickle.load(inFile)
-                    pickUpList = pickle.load(inFile)
-                success = True
-            else:
-                print "No such file."
+            # Load previously dumped variables
+            with open(savegame) as inFile:
+                health = pickle.load(inFile)
+                inventory = pickle.load(inFile)
+                currentRoom = pickle.load(inFile)
+                previousRoom = pickle.load(inFile)
+                pWeapons = pickle.load(inFile)
+                pickUpList = pickle.load(inFile)
+            success = True
+
+        # Resume the game
+        print 'Welcome back to the nightmare!'
         printDescription()
     else:
-        print "Couldn't find any savegames. Starting a new game."
+        print "Couldn't find any savegames.\nStarting a new game."
         initialize()
+    return
+
+def quitGame():
+    print '\nWould you like to save your game?'
+    answer = raw_input("\n> ").lower()
+    if 'y' in answer:
+        saveGame()
+        print 'The nightmare will be waiting!'
+        exit(0)
+    elif 'n' in answer:
+        print 'You pull out your knife and commit suicide'
+        exit(0)
+    else:
+        stderr.write('Invalid input\n')
+        print 'Resuming game'
     return
 
 def changeRoom():
     global previousRoom
+    # List of available rooms is in a file named 'Go'
     if (exists('/'.join(currentRoom) + '/Go')):
         with open (('/'.join(currentRoom) + '/Go'), 'r') as f:
+
             # print accessable rooms
+            roomList = []
             i = 1
             for line in f:
                 print "(%d) %s" % (i, line.strip())
+                roomList.append(line.strip())
                 i += 1
+
             roomNotFound = True
+
             # wait for player to enter valid room
             while (roomNotFound):
-                f.seek(0)
+                # Get number associated with the room
                 try:
                     choice = int(raw_input("\n#> "))
                     roomNotFound = not(choice in range(1,i))
                 except ValueError:
-                    print "Input needs to be integer."
+                    print "\nPlease use the room number"
+                    stderr.write("Input needs to be integer.\n")
                     continue
+
                 if (roomNotFound):
                     print "No such room."
-            i = 1
-            f.seek(0)
-            for line in f:
-                if (i == choice):
-                    nextRoom = line.strip()
-                    break
-                i += 1
+
+            # Pick next room
+            nextRoom = roomList[choice - 1]
+
+            # If no zombies cheat code is disabled
             if zombiesBool:
                 fight()
+
             previousRoom = currentRoom.pop() # remember previous room
+
+            # If player has died during a zombie atack
             if (health <= 0):
                 currentRoom.append('UserDied')
             else:
                 currentRoom.append(nextRoom) # set new room
+
             printDescription() # print next description
     else:
-        print "You can go nowhere from here."
+        print "You cannot go anywhere from here."
     return
 
 def goBack():
@@ -233,10 +258,15 @@ def lookAround():
     global status
     if (exists('/'.join(currentRoom) + '/Look')):
         with open(('/'.join(currentRoom) + '/Look'), 'r') as f:
+
+            print '' # Blank line
+
             for line in f:
                 # Change Items dictionary value for specified key
                 item = line.strip()
                 if (not (currentRoom[-1] + '_' + item in pickUpList)):
+
+                    # Ammo pickup
                     if (item.startswith('ammo')):
                         ammoString = item.split(':')
                         weaponName = ammoString[1]
@@ -246,11 +276,13 @@ def lookAround():
                             if (weaponName in weapon.values()):
                                 pickUpList.append(currentRoom[-1] + '_' + item)
                                 weapon['ammo'] += int(amount)
-                                print "\nYou just found and picked up %d bullets for %s." % (int(amount), weaponName)
+                                print "You just found and picked up %d bullets for %s." % (int(amount), weaponName)
                                 weaponFound = True
                                 break
                         if (weaponFound == False):
-                            print "You found bullets for %s, but you don't have this weapon so you just drop the bullets." % weaponName
+                            print "You found bullets for %s, but you don't have this weapon so you drop the bullets." % weaponName
+
+                    # Health pickup
                     elif (item.startswith('health')):
                         pickUpList.append(currentRoom[-1] + '_' + item)
                         healthString = item.split(':')
@@ -260,15 +292,16 @@ def lookAround():
                         else:
                             inventory[healthName] = 1
                         print "\nYou just found %s." % (healthName)
+
+                    # Weapon pickup
                     elif (item.startswith('weapon')):
                         pickUpList.append(currentRoom[-1] + '_' + item)
                         weaponString = item.split(':')
                         weaponName = weaponString[1]
                         pWeapons.append([weapon for weapon in weaponList if weapon['name']==weaponName][0])
-                        print "\nYou just found %s." % (weaponName)
-
+                        print "You just found %s." % (weaponName)
     else:
-        print "There's nothing to see here."
+        print "There is nothing to see here."
     return
 
 def checkInventory():
@@ -282,14 +315,18 @@ def checkInventory():
 def useHealthPack():
     global health, inventory
     if (len(inventory) == 0):
-        print "\nNo items in inventory."
+        print "\nYou do not have anything to use."
     else:
+        # Print usable items
         print "\nWhich item would you like to use? (q to cancel)"
         for item in inventory:
             print "%-20s: %s" % (item, inventory[item])
+
         notFound = True
         while (notFound):
             choice = raw_input("\n> ")
+
+            # Use item
             if (choice in inventory.keys()):
                 if (inventory[choice] > 0):
                     notFound = False
@@ -297,8 +334,11 @@ def useHealthPack():
                     health += healthDict[choice]
                     if (inventory[choice] == 0):
                         del inventory[choice]
+
+            # Cancel
             elif (choice.lower() == 'q'):
                 break
+
             if (notFound):
                 print "No such item."
     return
@@ -313,12 +353,14 @@ def helpMessage():
     print "inventory: show inventory items"
     print "use      : use inventory item"
     print "status   : show health status"
-    print "help     : show this message"
+    print "help     : show this message\n"
     return
 
 def readTitle():
     tempDir = os.path.realpath(__file__).split('/') # Get current file location
     tempDir.pop() # Removes program name from the list to get directory location
+
+    # Print all lines in the 'Title' file
     with open('/'.join(tempDir) + '/Title', 'r') as f:
         for line in f:
             print line.strip()
@@ -329,20 +371,29 @@ def showStatus():
 
 def fight():
     global health, pWeapons, zWeapon
+
+    # Zombie attack boolean
     occurence = (random.randint(1,100) <= CHANCE_OF_OCCURENCE)
+
     won = True
+
+    # Zombie attack
     if occurence:
         print("Oh my god! A bloodthirsty zombie!\n")
         zHealth = random.randint(Z_MIN_HEALTH, Z_MAX_HEALTH)
-        turn = "Player";
-        while (not ((zHealth <= 0) or (health <=0))):
+
+        turn = "Player"
+        while ((zHealth > 0) and (health > 0)):
             sleep(FIGHT_DELAY)
             print "\nplayer health: %d, zombie health: %d" % (health, zHealth)
+
             sleep(FIGHT_DELAY)
             if (turn == "Player"):
                 weapon = chooseWeapon();
             else:
                 weapon = zWeapon
+
+            # Flea
             if (weapon['name'] == 'Flea'):
                 print "\nYou're trying to flea"
                 sleep(FIGHT_DELAY)
@@ -352,13 +403,17 @@ def fight():
                 else:
                     print "... and couldn't escape."
                     damage = 0
+            # Use weapon
             else:
                 if ('ammo' in weapon.keys()):
                     weapon['ammo'] -= 1
+
                 hit = (random.randint(1,100) <= weapon['accuracy'])
+
                 if (hit):
                     variance = random.uniform(-DAMAGE_VARIANCE, DAMAGE_VARIANCE)
                     damage = weapon['strength'] + round(variance * weapon['strength'])
+
                     if (turn == "Player"):
                         print "\nYou're trying to attack with a %s" % weapon['name']
                         sleep(FIGHT_DELAY)
@@ -376,13 +431,17 @@ def fight():
                         print "\nThe zombie is trying to bite you."
                         sleep(FIGHT_DELAY)
                         print "... and missed you."
+
                     damage = 0
+
+            # Damage
             if (turn == "Player"):
                 zHealth = zHealth - damage
                 turn = "Zombie"
             else:
                 health = health - damage
                 turn = "Player"
+
         # end of fight
         if (zHealth <= 0):
            print("You killed the zombie.")
@@ -390,19 +449,27 @@ def fight():
         elif (health <= 0):
            print("The zombie killed you.")
            won = False
+
+        sleep(FIGHT_DELAY)
     return
 
 def chooseWeapon():
     global health, pWeapons, zWeapon
     validWeapon = False
+
     print("\n\nChoose your weapon to attack:")
+
     while(not validWeapon):
         print("You have the following weapons:\n")
+
+        # Print all available weapons
         for weapon in pWeapons:
             if ('ammo' in weapon.keys()):
                 print "%s (strength: %s, accuracy: %s, ammo: %s)" % (weapon['name'], weapon['strength'], weapon['accuracy'], weapon['ammo'])
             else:
                 print "%s (strength: %s, accuracy: %s)" % (weapon['name'], weapon['strength'], weapon['accuracy'])
+
+        # Select weapon to use
         choice = raw_input("\n> ")
         weapon = [weapon for weapon in pWeapons if weapon['name'].lower()==choice.lower()]
         if (len(weapon) == 1):
@@ -418,10 +485,6 @@ def chooseWeapon():
             print "You don't have such weapon!"
     return weapon
 
-
 ActionsDic = {'room': changeRoom, 'back': goBack, 'look': lookAround,
             'save': saveGame, 'quit': quitGame, 'inventory': checkInventory,
             'use': useHealthPack, 'help': helpMessage, 'status': showStatus}
-
-
-
